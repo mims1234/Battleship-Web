@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Batman - Battleship</title>
+    <link rel="stylesheet" href="../public/styles/gameStyle.css">
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-JE8BG98RRH"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-JE8BG98RRH');
+    </script>
+</head>
+<body>
+<div id="game-container">
+    <div id="score-container">
+        <h2>Batman - Battleship</h2>
+        <p>Player: <span id="player-score">0</span> | AI: <span id="ai-score">0</span></p>
+    </div>
+    <div id="status">Place your ships</div>
+    <div id="game-board">
+        <div class="grid-container">
+            <h2>Your Grid</h2>
+            <div class="player-area">
+                <div id="player-grid" class="grid"></div>
+                <div class="ship-table">
+                    <h3>Your Ships</h3>
+                    <table id="player-ships">
+                        <tr>
+                            <th>Ship</th>
+                            <th>Status</th>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="grid-container">
+            <h2>AI Grid</h2>
+            <div class="ai-area">
+                <div id="ai-grid" class="grid"></div>
+                <div class="ship-table">
+                    <h3>AI Ships</h3>
+                    <table id="ai-ships">
+                        <tr>
+                            <th>Ship</th>
+                            <th>Status</th>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <footer>@Copyright 2024 Made by MiMs</footer> 
+    <button id="restart" style="display: none;">Play Again</button>
+</div>
+
+<script src="../public/scripts/gameJS.js"></script>
+</body>
+</html></html>
