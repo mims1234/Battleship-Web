@@ -25,6 +25,8 @@
         <div class="radar-sweep"></div>
     </div>
 
+    <div id="achieve-toast" class="achieve-toast" role="status" aria-live="polite"></div>
+
     <div id="game-container">
         <header class="game-header anim-enter">
             <div class="brand-block">
@@ -59,12 +61,17 @@
                     <button type="button" class="toggle-btn" id="salvo-toggle" aria-pressed="false" title="Pick targets, then fire one shot per ship afloat">
                         <i class="fa-solid fa-burst"></i> <span class="toggle-label">Salvo</span>
                     </button>
-
+                    <button type="button" class="toggle-btn" id="notouch-toggle" aria-pressed="false" title="Ships cannot touch (including diagonally)">
+                        <i class="fa-solid fa-border-none"></i> <span class="toggle-label">No-touch</span>
+                    </button>
+                    <button type="button" class="toggle-btn" id="daily-toggle" aria-pressed="false" title="Seeded daily challenge (Normal)">
+                        <i class="fa-solid fa-calendar-day"></i> <span class="toggle-label">Daily</span>
+                    </button>
                     <button type="button" class="icon-btn" id="sound-toggle" aria-pressed="true" title="Toggle sound">
                         <i class="fa-solid fa-volume-high"></i>
                     </button>
                 </div>
-                <p class="options-lock-note" id="options-lock-note">Difficulty &amp; Salvo lock once battle starts</p>
+                <p class="options-lock-note" id="options-lock-note">Difficulty &amp; modes lock once battle starts · <span id="daily-label">Daily</span></p>
 
                 <div id="score-container" class="score-panel">
                     <div class="score-pill">
@@ -87,10 +94,11 @@
             <span><i class="peg-swatch miss"></i> Miss</span>
             <span><i class="peg-swatch ship"></i> Ship</span>
             <span><i class="peg-swatch sunk"></i> Sunk</span>
+            <span><i class="peg-swatch radar"></i> Radar</span>
         </div>
 
         <div class="placement-hint anim-enter" id="placement-hint">
-            <span><i class="fa-solid fa-hand-pointer"></i> Tap or drag to place · scroll/rotate to flip · Undo to fix</span>
+            <span><i class="fa-solid fa-hand-pointer"></i> Tap, drag preview, or drag dock chips · scroll/rotate to flip</span>
             <button class="rotate-button" id="rotate-ship" type="button" aria-label="Rotate ship">
                 <i class="fa-solid fa-arrows-rotate"></i>
             </button>
@@ -105,6 +113,8 @@
             </button>
         </div>
 
+        <div class="ship-dock anim-enter" id="ship-dock" aria-label="Ship dock"></div>
+
         <div class="salvo-bar hidden anim-enter" id="salvo-bar" role="region" aria-label="Salvo targeting">
             <span id="salvo-count">Select 0 / 5 targets</span>
             <button type="button" class="auto-place-button" id="salvo-clear" disabled>
@@ -112,6 +122,12 @@
             </button>
             <button type="button" class="fire-salvo-button" id="fire-salvo" disabled>
                 <i class="fa-solid fa-bullseye"></i> Fire Salvo
+            </button>
+        </div>
+
+        <div class="battle-tools anim-enter">
+            <button type="button" class="toggle-btn hidden" id="radar-btn" aria-pressed="false" title="Radar scout: reveal a 3×3 area (1 use)">
+                <i class="fa-solid fa-satellite-dish"></i> <span class="toggle-label">Radar</span>
             </button>
         </div>
 
@@ -172,6 +188,11 @@
             <ul id="move-log-list" aria-live="polite" aria-label="Battle log"></ul>
         </details>
 
+        <details class="achievements-panel anim-enter" id="achievements-panel">
+            <summary class="move-log-title"><i class="fa-solid fa-medal"></i> Achievements</summary>
+            <ul id="achievements-list"></ul>
+        </details>
+
         <footer class="site-footer">© 2024 Made by MiMs</footer>
     </div>
 
@@ -185,13 +206,18 @@
                 <div><span class="result-stat-label">Accuracy</span><span class="result-stat-value" id="result-acc">0%</span></div>
                 <div><span class="result-stat-label">Time</span><span class="result-stat-value" id="result-time">0:00</span></div>
             </div>
-            <button id="result-restart" type="button" class="result-restart">
-                <i class="fa-solid fa-play"></i> Play Again
-            </button>
+            <div class="result-actions">
+                <button id="result-share" type="button" class="result-share">
+                    <i class="fa-solid fa-share-nodes"></i> Share
+                </button>
+                <button id="result-restart" type="button" class="result-restart">
+                    <i class="fa-solid fa-play"></i> Play Again
+                </button>
+            </div>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.2/lib/anime.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/animejs@4.5.0/dist/bundles/anime.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
     <script src="../public/scripts/gameJS.js"></script>
 </body>

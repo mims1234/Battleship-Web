@@ -1286,10 +1286,199 @@ body {
     }
 }
 
+/* ===== Ship dock / Radar / Meta ===== */
+.ship-dock {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    max-width: 720px;
+}
+
+.ship-dock.hidden { display: none !important; }
+
+.dock-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--bg-surface);
+    color: var(--text-muted);
+    font-family: var(--font-body);
+    font-size: 0.74rem;
+    font-weight: 600;
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+}
+
+.dock-chip img {
+    width: 42px;
+    height: 16px;
+    object-fit: contain;
+}
+
+.dock-chip.is-current {
+    color: var(--text);
+    background: var(--accent-soft);
+    box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.dock-chip.is-placed {
+    opacity: 0.4;
+    cursor: default;
+}
+
+.battle-tools {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    min-height: 0;
+}
+
+.shot-bolt {
+    position: fixed;
+    z-index: 40;
+    width: 10px;
+    height: 10px;
+    margin: -5px 0 0 -5px;
+    border-radius: 50%;
+    pointer-events: none;
+    background: radial-gradient(circle, #fff 0%, var(--accent-bright) 55%, transparent 75%);
+    box-shadow: 0 0 12px var(--accent-bright);
+}
+
+.grid-container.is-thinking {
+    outline: 1px solid color-mix(in srgb, var(--accent-bright) 45%, transparent);
+}
+
+.grid-container.is-scanned .grid {
+    filter: saturate(1.08);
+}
+
+.cell.radar-contact {
+    box-shadow: inset 0 0 0 2px #c8a24a;
+}
+
+.cell.radar-clear {
+    box-shadow: inset 0 0 0 1px rgba(167, 215, 224, 0.55);
+}
+
+.cell.radar-flash {
+    animation: radarFlash 0.9s ease;
+}
+
+.cell.revealed.ship {
+    outline: 1px dashed rgba(255, 255, 255, 0.35);
+}
+
+@keyframes radarFlash {
+    0% { filter: brightness(1); }
+    35% { filter: brightness(1.55); }
+    100% { filter: brightness(1); }
+}
+
+.peg-swatch.radar {
+    background: #c8a24a;
+}
+
+.achievements-panel {
+    width: 100%;
+    max-width: 640px;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    backdrop-filter: blur(14px);
+    box-shadow: var(--shadow);
+}
+
+.achievements-panel ul {
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 6px;
+    margin-top: 8px;
+    font-size: 0.78rem;
+}
+
+.achievements-panel li {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.18);
+    color: var(--text-muted);
+}
+
+.achievements-panel li.unlocked {
+    color: var(--text);
+}
+
+.achievements-panel li.unlocked i {
+    color: var(--accent-bright);
+}
+
+.achieve-toast {
+    position: fixed;
+    top: 18px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-120%);
+    z-index: 60;
+    padding: 10px 16px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--bg-panel);
+    color: var(--text);
+    font-family: var(--font-display);
+    font-size: 0.78rem;
+    letter-spacing: 0.06em;
+    opacity: 0;
+    pointer-events: none;
+    box-shadow: var(--shadow);
+}
+
+.achieve-toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.result-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+}
+
+.result-share {
+    font-family: var(--font-display);
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 12px 18px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    color: var(--text);
+    background: var(--bg-surface);
+    touch-action: manipulation;
+}
+
+.result-share:hover {
+    transform: translateY(-1px);
+}
+
 @media (prefers-reduced-motion: reduce) {
     .wave,
     .radar-sweep,
-    .cell.firing {
+    .cell.firing,
+    .cell.radar-flash {
         animation: none !important;
     }
 
@@ -1300,5 +1489,9 @@ body {
 
     body {
         transition: none;
+    }
+
+    .shot-bolt {
+        display: none !important;
     }
 }
