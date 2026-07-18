@@ -1,8 +1,14 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Batman - Battleship</title>
-    <link rel="stylesheet" href="../public/styles/gameStyle.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Batman — Battleship</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link rel="stylesheet" href="public/styles/gameStyle.css">
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-JE8BG98RRH"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
@@ -11,49 +17,119 @@
       gtag('config', 'G-JE8BG98RRH');
     </script>
 </head>
-<body>
-<div id="game-container">
-    <div id="score-container">
-        <h2>Batman - Battleship</h2>
-        <p>Player: <span id="player-score">0</span> | AI: <span id="ai-score">0</span></p>
+<body data-theme="atlantic">
+    <div class="ocean-bg" aria-hidden="true">
+        <div class="wave wave-1"></div>
+        <div class="wave wave-2"></div>
+        <div class="wave wave-3"></div>
+        <div class="radar-sweep"></div>
     </div>
-    <div id="status">Place your ships</div>
-    <div id="game-board">
-        <div class="grid-container">
-            <h2>Your Grid</h2>
-            <div class="player-area">
-                <div id="player-grid" class="grid"></div>
-                <div class="ship-table">
-                    <h3>Your Ships</h3>
-                    <table id="player-ships">
-                        <tr>
-                            <th>Ship</th>
-                            <th>Status</th>
-                        </tr>
-                    </table>
-                </div>
-            </div>
-        </div>
-        <div class="grid-container">
-            <h2>AI Grid</h2>
-            <div class="ai-area">
-                <div id="ai-grid" class="grid"></div>
-                <div class="ship-table">
-                    <h3>AI Ships</h3>
-                    <table id="ai-ships">
-                        <tr>
-                            <th>Ship</th>
-                            <th>Status</th>
-                        </tr>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-    <footer>@Copyright 2024 Made by MiMs</footer> 
-    <button id="restart" style="display: none;">Play Again</button>
-</div>
 
-<script src="../public/scripts/gameJS.js"></script>
+    <div id="game-container">
+        <header class="game-header anim-enter">
+            <div class="brand-block">
+                <p class="brand-eyebrow"><i class="fa-solid fa-crosshairs"></i> Naval Command</p>
+                <h1 class="brand-title">BATMAN</h1>
+                <p class="brand-sub">Battleship</p>
+            </div>
+
+            <div class="header-controls">
+                <div class="theme-switcher" role="group" aria-label="Theme">
+                    <button type="button" class="theme-btn active" data-theme="atlantic" title="Atlantic">
+                        <span class="theme-dot atlantic"></span>
+                        <span class="theme-label">Atlantic</span>
+                    </button>
+                    <button type="button" class="theme-btn" data-theme="brass" title="Brass">
+                        <span class="theme-dot brass"></span>
+                        <span class="theme-label">Brass</span>
+                    </button>
+                    <button type="button" class="theme-btn" data-theme="regatta" title="Regatta">
+                        <span class="theme-dot regatta"></span>
+                        <span class="theme-label">Regatta</span>
+                    </button>
+                </div>
+
+                <div id="score-container" class="score-panel">
+                    <div class="score-pill">
+                        <span class="score-label">You</span>
+                        <span id="player-score" class="score-value">0</span>
+                    </div>
+                    <div class="score-divider">VS</div>
+                    <div class="score-pill ai">
+                        <span class="score-label">AI</span>
+                        <span id="ai-score" class="score-value">0</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div id="status" class="status-banner anim-enter" role="status">Place your ships</div>
+
+        <div class="peg-legend anim-enter" aria-label="Peg legend">
+            <span><i class="peg-swatch hit"></i> Hit</span>
+            <span><i class="peg-swatch miss"></i> Miss</span>
+            <span><i class="peg-swatch ship"></i> Ship</span>
+            <span><i class="peg-swatch sunk"></i> Sunk</span>
+        </div>
+
+        <div class="placement-hint anim-enter" id="placement-hint">
+            <span><i class="fa-solid fa-rotate"></i> Tap rotate or scroll to flip ships</span>
+            <button class="rotate-button" id="rotate-ship" type="button" aria-label="Rotate ship">
+                <i class="fa-solid fa-arrows-rotate"></i>
+            </button>
+        </div>
+
+        <div id="game-board">
+            <section class="grid-container anim-enter" id="player-panel">
+                <div class="panel-header">
+                    <h2><i class="fa-solid fa-ship"></i> Your Fleet</h2>
+                </div>
+                <div class="player-area">
+                    <div class="grid-wrap">
+                        <div id="player-grid" class="grid"></div>
+                    </div>
+                    <div class="ship-table">
+                        <h3>Fleet Status</h3>
+                        <table id="player-ships">
+                            <tr>
+                                <th>Ship</th>
+                                <th>Status</th>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <section class="grid-container anim-enter" id="ai-panel">
+                <div class="panel-header">
+                    <h2><i class="fa-solid fa-robot"></i> Enemy Waters</h2>
+                </div>
+                <div class="ai-area">
+                    <div class="grid-wrap">
+                        <div id="ai-grid" class="grid"></div>
+                    </div>
+                    <div class="ship-table">
+                        <h3>Enemy Status</h3>
+                        <table id="ai-ships">
+                            <tr>
+                                <th>Ship</th>
+                                <th>Status</th>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <button id="restart" type="button" style="display: none;">
+            <i class="fa-solid fa-play"></i> Play Again
+        </button>
+
+        <footer class="site-footer">© 2024 Made by MiMs</footer>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.2/lib/anime.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+    <script src="public/scripts/gameJS.js"></script>
 </body>
 </html>
