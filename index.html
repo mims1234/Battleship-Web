@@ -49,6 +49,23 @@
                     </button>
                 </div>
 
+                <div class="option-row">
+                    <div class="seg-control" role="group" aria-label="Difficulty">
+                        <button type="button" class="seg-btn active" data-difficulty="easy" title="Random shots">Easy</button>
+                        <button type="button" class="seg-btn" data-difficulty="normal" title="Hunt after hits">Normal</button>
+                        <button type="button" class="seg-btn" data-difficulty="hard" title="Probability hunt">Hard</button>
+                    </div>
+
+                    <button type="button" class="toggle-btn" id="salvo-toggle" aria-pressed="false" title="Pick targets, then fire one shot per ship afloat">
+                        <i class="fa-solid fa-burst"></i> <span class="toggle-label">Salvo</span>
+                    </button>
+
+                    <button type="button" class="icon-btn" id="sound-toggle" aria-pressed="true" title="Toggle sound">
+                        <i class="fa-solid fa-volume-high"></i>
+                    </button>
+                </div>
+                <p class="options-lock-note" id="options-lock-note">Difficulty &amp; Salvo lock once battle starts</p>
+
                 <div id="score-container" class="score-panel">
                     <div class="score-pill">
                         <span class="score-label">You</span>
@@ -73,10 +90,35 @@
         </div>
 
         <div class="placement-hint anim-enter" id="placement-hint">
-            <span><i class="fa-solid fa-rotate"></i> Tap rotate or scroll to flip ships</span>
+            <span><i class="fa-solid fa-hand-pointer"></i> Tap or drag to place · scroll/rotate to flip · Undo to fix</span>
             <button class="rotate-button" id="rotate-ship" type="button" aria-label="Rotate ship">
                 <i class="fa-solid fa-arrows-rotate"></i>
             </button>
+            <button class="auto-place-button" id="undo-ship" type="button" title="Undo last ship" disabled>
+                <i class="fa-solid fa-rotate-left"></i> <span class="toggle-label">Undo</span>
+            </button>
+            <button class="auto-place-button" id="clear-fleet" type="button" title="Clear all ships" disabled>
+                <i class="fa-solid fa-trash"></i> <span class="toggle-label">Clear</span>
+            </button>
+            <button class="auto-place-button" id="auto-place" type="button" title="Auto deploy fleet">
+                <i class="fa-solid fa-shuffle"></i> <span class="toggle-label">Auto</span>
+            </button>
+        </div>
+
+        <div class="salvo-bar hidden anim-enter" id="salvo-bar" role="region" aria-label="Salvo targeting">
+            <span id="salvo-count">Select 0 / 5 targets</span>
+            <button type="button" class="auto-place-button" id="salvo-clear" disabled>
+                <i class="fa-solid fa-xmark"></i> <span class="toggle-label">Clear</span>
+            </button>
+            <button type="button" class="fire-salvo-button" id="fire-salvo" disabled>
+                <i class="fa-solid fa-bullseye"></i> Fire Salvo
+            </button>
+        </div>
+
+        <div class="stats-bar anim-enter" id="stats-bar" aria-label="Career stats">
+            <span><i class="fa-solid fa-trophy"></i> Wins <b id="stat-wins">0</b></span>
+            <span><i class="fa-solid fa-skull-crossbones"></i> Losses <b id="stat-losses">0</b></span>
+            <span><i class="fa-solid fa-fire"></i> Streak <b id="stat-streak">0</b></span>
         </div>
 
         <div id="game-board">
@@ -125,7 +167,28 @@
             <i class="fa-solid fa-play"></i> Play Again
         </button>
 
+        <details class="move-log anim-enter" id="move-log" open>
+            <summary class="move-log-title"><i class="fa-solid fa-list"></i> Battle Log</summary>
+            <ul id="move-log-list" aria-live="polite" aria-label="Battle log"></ul>
+        </details>
+
         <footer class="site-footer">© 2024 Made by MiMs</footer>
+    </div>
+
+    <div class="result-modal" id="result-modal" role="dialog" aria-modal="true" aria-labelledby="result-title" aria-describedby="result-sub" aria-hidden="true">
+        <div class="result-card">
+            <div class="result-icon"><i class="fa-solid fa-trophy"></i></div>
+            <h2 class="result-title" id="result-title">Victory!</h2>
+            <p class="result-sub" id="result-sub">Fleet destroyed the enemy.</p>
+            <div class="result-stats">
+                <div><span class="result-stat-label">Shots</span><span class="result-stat-value" id="result-shots">0</span></div>
+                <div><span class="result-stat-label">Accuracy</span><span class="result-stat-value" id="result-acc">0%</span></div>
+                <div><span class="result-stat-label">Time</span><span class="result-stat-value" id="result-time">0:00</span></div>
+            </div>
+            <button id="result-restart" type="button" class="result-restart">
+                <i class="fa-solid fa-play"></i> Play Again
+            </button>
+        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.2/lib/anime.min.js"></script>
