@@ -1,7 +1,7 @@
 // Battleship v2 — shared constants, rule presets, campaign + gauntlet content.
 
 export const GRID = 10;
-export const VERSION = "2.0.0";
+export const VERSION = "2.2.0";
 
 // Same fleet as v1 (names + sizes), each ship now carries a commander ability.
 export const SHIPS = [
