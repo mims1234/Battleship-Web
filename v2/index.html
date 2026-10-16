@@ -2,6 +2,14 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <script>
+      // Opened as ".../v2" (no slash)? Relative paths would resolve against the parent folder,
+      // so redirect to ".../v2/" before any stylesheet or script loads.
+      (function () {
+        var p = location.pathname;
+        if (!/\/$/.test(p) && !/\.html?$/i.test(p)) location.replace(p + "/" + location.search + location.hash);
+      })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#041426">
     <title>Batman — Battleship v2</title>
@@ -9,7 +17,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <link rel="stylesheet" href="css/v2.css">
+    <link rel="stylesheet" href="css/v2.css?v=2.2.0">
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-JE8BG98RRH"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
@@ -17,19 +25,29 @@
       gtag('js', new Date());
       gtag('config', 'G-JE8BG98RRH');
     </script>
-    <script>
-      // Remember that this player prefers v2 (the classic page reads the same key).
-      try { localStorage.setItem("battleship-version", "v2"); } catch (e) {}
-    </script>
+    <!-- Cache-busting: bump the ?v= number on every deploy (here and in the stylesheet link above)
+         so browsers and Cloudflare fetch fresh game files. -->
     <script type="importmap">
     {
       "imports": {
         "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
-        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/",
+        "./js/main.js": "./js/main.js?v=2.2.0",
+        "./js/config.js": "./js/config.js?v=2.2.0",
+        "./js/util.js": "./js/util.js?v=2.2.0",
+        "./js/board.js": "./js/board.js?v=2.2.0",
+        "./js/game.js": "./js/game.js?v=2.2.0",
+        "./js/ai.js": "./js/ai.js?v=2.2.0",
+        "./js/audio.js": "./js/audio.js?v=2.2.0",
+        "./js/net.js": "./js/net.js?v=2.2.0",
+        "./js/render/stage.js": "./js/render/stage.js?v=2.2.0",
+        "./js/render/ocean.js": "./js/render/ocean.js?v=2.2.0",
+        "./js/render/fx.js": "./js/render/fx.js?v=2.2.0",
+        "./js/render/models.js": "./js/render/models.js?v=2.2.0"
       }
     }
     </script>
-    <script type="module" src="js/main.js"></script>
+    <script type="module" src="js/main.js?v=2.2.0"></script>
 </head>
 <body data-theme="atlantic">
     <canvas id="stage" aria-hidden="true"></canvas>
@@ -49,7 +67,7 @@
         <div class="panel narrow">
             <h2 id="nogl-title"><i class="fa-solid fa-triangle-exclamation"></i> 3D not available</h2>
             <p>Battleship v2 needs WebGL, and this browser or device has it turned off. The classic version runs everywhere.</p>
-            <a class="btn primary" href="../index.html?v=1"><i class="fa-solid fa-clock-rotate-left"></i> Play Classic v1</a>
+            <a class="btn primary" href="../?v=1"><i class="fa-solid fa-clock-rotate-left"></i> Play Classic v1</a>
         </div>
     </section>
 
@@ -85,7 +103,7 @@
                 <button class="chip-btn" data-go="records" type="button"><i class="fa-solid fa-medal"></i> Records</button>
                 <button class="chip-btn" data-go="howto" type="button"><i class="fa-solid fa-circle-question"></i> How to play</button>
                 <button class="chip-btn" data-go="settings" type="button"><i class="fa-solid fa-gear"></i> Settings</button>
-                <a class="chip-btn" id="classic-link" href="../index.html?v=1"><i class="fa-solid fa-clock-rotate-left"></i> Classic v1</a>
+                <a class="chip-btn" id="classic-link" href="../?v=1"><i class="fa-solid fa-clock-rotate-left"></i> Classic v1</a>
             </div>
             <div class="theme-row" role="group" aria-label="Theme"></div>
         </div>
