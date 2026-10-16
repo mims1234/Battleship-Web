@@ -36,7 +36,7 @@ const touch = isTouch();
 const DEFAULT_SETTINGS = {
     theme: "atlantic", quality: touch ? "medium" : "high", weather: "auto", camera: "auto",
     master: 0.8, music: 0.45, sfx: 0.9, sound: true, haptics: true,
-    reduced: prefersReducedMotion(), confirmShots: touch, callsign: "",
+    reduced: prefersReducedMotion(), confirmShots: touch, callsign: "", cameraStyle: "tactical",
     quick: { ...TACTICAL_RULES }
 };
 const settings = { ...DEFAULT_SETTINGS, ...store.get("bsv2-settings", {}) };
@@ -76,6 +76,8 @@ async function boot() {
         return;
     }
     stage.setCameraMode(settings.camera);
+    applyCameraStyle();
+    stage.onOrbitChange = () => $("#hud-recenter").classList.toggle("hidden", !stage.orbitActive);
     if (new URLSearchParams(location.search).has("debug")) window.__bsv2 = { stage, get match() { return M; } };
     stage.onThunder = () => audio.thunder();
     stage.onImpact = onStageImpact;
@@ -201,6 +203,13 @@ function applyThemeDom(t) {
     document.body.dataset.theme = t;
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) meta.setAttribute("content", getComputedStyle(document.body).getPropertyValue("--bg").trim() || "#041426");
+}
+
+function applyCameraStyle() {
+    if (!stage) return;
+    stage.cinematic = settings.cameraStyle === "cinematic" && !settings.reduced;
+    if (!stage.cinematic) stage.endTrack();
+    stage.focus(stage.requestedView || "menu", { force: stage.forceView, low: stage.lowView });
 }
 
 function syncWeatherAudio() {
@@ -367,13 +376,15 @@ function buildSettings() {
     row("Graphics", "Low skips bloom and lowers resolution.", seg("quality", [["low", "Low"], ["medium", "Medium"], ["high", "High"]], (v) => stage.setQuality(v)));
     row("Weather", "Auto = storms on Atlantic.", seg("weather", [["auto", "Auto"], ["clear", "Clear"], ["storm", "Storm"]], (v) => { stage.setWeather(v); syncWeatherAudio(); }));
     row("Camera", "Auto shows both boards on wide screens.", seg("camera", [["auto", "Auto"], ["both", "Both"], ["focus", "Focus"]], (v) => stage.setCameraMode(v)));
+    row("Camera style", "Cinematic follows every shell, torpedo and plane, and drops low over your fleet on enemy turns. Aiming stays top-down.",
+        seg("cameraStyle", [["tactical", "Tactical"], ["cinematic", "Cinematic"]], () => applyCameraStyle()));
     row("Master volume", "", range("master"));
     row("Music &amp; ambience", "", range("music"));
     row("Effects", "", range("sfx"));
     row("Sound", "", toggle("sound", () => audio.applyVolumes()));
     row("Haptics", "Vibrate on hits (mobile).", toggle("haptics"));
     row("Confirm shots", "Tap a cell twice to fire (recommended on touch).", toggle("confirmShots"));
-    row("Reduced motion", "Shorter effects, no camera shake or slow-mo.", toggle("reduced", (v) => { stage.reducedMotion = v; stage.setWeather(settings.weather); syncWeatherAudio(); }));
+    row("Reduced motion", "Shorter effects, no camera shake or slow-mo.", toggle("reduced", (v) => { stage.reducedMotion = v; stage.setWeather(settings.weather); syncWeatherAudio(); applyCameraStyle(); }));
     const reset = h("button", { type: "button", class: "btn danger" }, '<i class="fa-solid fa-trash"></i> Reset');
     reset.onclick = () => showModal(`<h2>Reset progress?</h2><p>This clears v2 stats, achievements, campaign stars and the Gauntlet. Classic v1 is not affected.</p>
         <div class="modal-actions"><button class="btn" data-act="close" type="button">Cancel</button><button class="btn danger" data-act="ok" type="button">Reset</button></div>`, {
@@ -397,6 +408,7 @@ function buildHowto() {
         <section><h3><i class="fa-solid fa-hand-pointer"></i>Placing ships</h3><p>Hover or drag over your grid and tap to drop a ship. <kbd>R</kbd>, right-click or the mouse wheel rotates. Tap a placed ship to pick it up again, or use Auto.</p></section>
         ${ab}${rules}
         <section><h3><i class="fa-solid fa-brain"></i>Coach</h3><p>Overlays the Hard AI's probability heat map on enemy waters, so you can learn how it hunts.</p></section>
+        <section><h3><i class="fa-solid fa-video"></i>Camera</h3><p>Right-drag (or Alt-drag, or two fingers) to look around; wheel or pinch to zoom; <kbd>0</kbd> recenters. Settings → Camera style → <b>Cinematic</b> follows every shot up close.</p></section>
         <section><h3><i class="fa-solid fa-keyboard"></i>Keyboard</h3><p>Arrow keys move the cursor and <kbd>Enter</kbd> fires. <kbd>1</kbd>–<kbd>5</kbd> pick abilities, <kbd>M</kbd> maneuver, <kbd>F</kbd> fire mode / fire salvo, <kbd>C</kbd> coach, <kbd>V</kbd> camera, <kbd>L</kbd> log, <kbd>Esc</kbd> cancel.</p></section>`;
 }
 
@@ -502,6 +514,7 @@ function setupMatch(cfg) {
     } else {
         sides[1] = { name: names[1], kind: "remote", agent: new RemoteAgent(online.net), board: null, intel: new Intel(b0.publicTerrain()), mods: new Set() };
     }
+    stage.resetOrbit();
     M = {
         ...cfg, rules, seed, rng, admiral, admiralKey: cfg.admiral || "quick", sides, viewer: 0, phase: "placement",
         coach: false, revealEnemy: false, busy: false, startedAt: 0, targeting: null, replaySpeed: 1, flags: {}
@@ -874,7 +887,7 @@ async function onTurn(s) {
         const opp = M.game.sides[s];
         const who = opp.name === "You" ? "Your" : `${opp.name}'s`;
         setBanner(M.replay ? `${who} turn` : `${opp.name} is taking aim…`, s === M.viewer ? "you" : "enemy");
-        stage.focus(s === M.viewer ? "enemy" : "home");
+        stage.focus(s === M.viewer ? "enemy" : "home", { low: true });
         clearTargetVisuals();
         renderActionBar();
         setHint(M.replay ? "" : side.kind === "remote" ? "Waiting for your opponent…" : "");
@@ -1829,29 +1842,87 @@ function handleClick(p) {
 
 function bindInput() {
     const c = $("#stage");
+    // Free look: right/middle/alt-drag (mouse) or two fingers (touch) orbit; wheel/pinch zoom.
+    const touches = new Map();
+    let pinch = null;
+    let look = null;
+    const inGame = () => M && !M.attract && !$("#hud").classList.contains("hidden");
     c.addEventListener("pointerdown", (e) => {
-        pointer = { down: true, id: e.pointerId, sx: e.clientX, sy: e.clientY, moved: false, type: e.pointerType };
         kb.active = false;
-        if (e.button === 2) return;
+        if (e.pointerType === "touch") {
+            touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+            if (touches.size === 2 && inGame()) {
+                const [a, b] = [...touches.values()];
+                pinch = { cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2, d: Math.hypot(a.x - b.x, a.y - b.y) };
+                pointer.down = false;
+                pointer.moved = true;
+                if (M?.phase === "placement") { M.placement.hover = null; previewPlacement(); }
+                return;
+            }
+        }
+        const lookBtn = e.button === 2 || e.button === 1 || (e.button === 0 && e.altKey);
+        if (lookBtn && e.pointerType === "mouse") {
+            look = { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, btn: e.button, dragged: false };
+            try { c.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+            return;
+        }
+        pointer = { down: true, id: e.pointerId, sx: e.clientX, sy: e.clientY, moved: false, type: e.pointerType };
         handleHover(stage.pick(e.clientX, e.clientY));
     });
     c.addEventListener("pointermove", (e) => {
+        if (pinch && touches.has(e.pointerId)) {
+            touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+            if (touches.size < 2) return;
+            const [a, b] = [...touches.values()];
+            const cx = (a.x + b.x) / 2;
+            const cy = (a.y + b.y) / 2;
+            const d = Math.hypot(a.x - b.x, a.y - b.y);
+            stage.orbitBy(-(cx - pinch.cx) * 0.007, (cy - pinch.cy) * 0.006);
+            if (pinch.d > 10 && d > 10) stage.zoomBy(pinch.d / d);
+            pinch = { cx, cy, d };
+            return;
+        }
+        if (look) {
+            if (Math.hypot(e.clientX - look.sx, e.clientY - look.sy) > 4) look.dragged = true;
+            if (inGame()) stage.orbitBy(-(e.clientX - look.x) * 0.006, (e.clientY - look.y) * 0.005);
+            look.x = e.clientX;
+            look.y = e.clientY;
+            return;
+        }
         if (pointer.down && Math.hypot(e.clientX - pointer.sx, e.clientY - pointer.sy) > 8) pointer.moved = true;
         if (e.pointerType === "mouse" || pointer.down) handleHover(stage.pick(e.clientX, e.clientY));
     });
+    const endTouch = (e) => {
+        touches.delete(e.pointerId);
+        if (touches.size < 2) pinch = null;
+    };
     c.addEventListener("pointerup", (e) => {
+        if (e.pointerType === "touch") {
+            const wasPinch = !!pinch || touches.size > 1;
+            endTouch(e);
+            if (wasPinch) return;
+        }
+        if (look) {
+            const tap = !look.dragged && look.btn === 2;
+            look = null;
+            if (tap) rotateTargeting();
+            return;
+        }
         if (!pointer.down) return;
         pointer.down = false;
-        if (e.button === 2) return;
         const p = stage.pick(e.clientX, e.clientY);
         // touch: drag-to-aim then release to drop works for placement; battle taps need little movement
         if (M?.phase === "placement" || !pointer.moved) handleClick(p);
         if (e.pointerType !== "mouse" && M?.phase === "placement") { M.placement.hover = null; previewPlacement(); }
     });
+    c.addEventListener("pointercancel", (e) => { endTouch(e); look = null; pointer.down = false; });
     c.addEventListener("pointerleave", () => { if (pointer.type === "mouse") handleHover(null); });
-    c.addEventListener("contextmenu", (e) => { e.preventDefault(); rotateTargeting(); });
+    c.addEventListener("contextmenu", (e) => e.preventDefault());
     c.addEventListener("wheel", (e) => {
-        if (M?.phase === "placement" || M?.targeting?.mode === "recon" || M?.targeting?.mode === "torpedo") { e.preventDefault(); rotateTargeting(); }
+        e.preventDefault();
+        const rotating = M?.phase === "placement" || M?.targeting?.mode === "recon" || M?.targeting?.mode === "torpedo";
+        if (rotating && !e.ctrlKey) { rotateTargeting(); return; }
+        if (inGame()) stage.zoomBy(Math.exp(e.deltaY * (e.ctrlKey ? 0.01 : 0.0012)));
     }, { passive: false });
 
     window.addEventListener("keydown", (e) => {
@@ -1867,6 +1938,7 @@ function bindInput() {
         }
         if (k === "r" || k === "R") { rotateTargeting(); return; }
         if (k === "v" || k === "V") { cycleCamera(); return; }
+        if (k === "0" || k === "Home") { stage.resetOrbit(); return; }
         if (k === "l" || k === "L") { toggleLog(); return; }
         if (M.phase === "battle" && humanTurn()) {
             const ab = ABILITY_ORDER.find((id) => ABILITIES[id].key === k);
@@ -1931,6 +2003,7 @@ function resumeHud() {
 function bindHud() {
     $("#hud-home").addEventListener("click", () => { audio.click(); confirmLeave(); });
     $("#hud-view").addEventListener("click", () => { audio.click(); cycleCamera(); });
+    $("#hud-recenter").addEventListener("click", () => { audio.click(); stage.resetOrbit(); });
     $("#hud-log").addEventListener("click", () => { audio.click(); toggleLog(); });
     $("#hud-settings").addEventListener("click", () => {
         audio.click();
