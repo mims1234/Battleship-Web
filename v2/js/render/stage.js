@@ -34,6 +34,11 @@ export class Stage {
         this.onImpact = null;
         this.listeners = [];
         this.running = false;
+        this.cinematic = false; // follow-cams for shots/abilities, low angle on enemy turns
+        this.lowView = false;
+        this.orbit = { yaw: 0, pitch: 0, zoom: 1 }; // player free-look offsets
+        this.shotCam = null;
+        this.onOrbitChange = null;
     }
 
     async init() {
@@ -322,6 +327,7 @@ export class Stage {
         this.speed = 1;
         this.slowmo = 0;
         this.killcamT = 0;
+        this.shotCam = null;
     }
 
     setTerrain(key, { island = [], fog = [] }) {
@@ -603,11 +609,55 @@ export class Stage {
     // ---------- camera ----------
     setCameraMode(mode) { this.cameraMode = mode; this._computeCamera(false); }
 
-    focus(view, { force = false } = {}) {
+    focus(view, { force = false, low = false } = {}) {
         this.requestedView = view;
         this.forceView = force;
+        this.lowView = low;
         this._computeCamera(false);
     }
+
+    // ----- free look -----
+    get orbitActive() {
+        const o = this.orbit;
+        return Math.abs(o.yaw) > 0.01 || Math.abs(o.pitch) > 0.01 || Math.abs(o.zoom - 1) > 0.01;
+    }
+
+    orbitBy(dYaw, dPitch) {
+        if (this.view === "menu") return;
+        this.orbit.yaw = THREE.MathUtils.clamp(this.orbit.yaw + dYaw, -Math.PI, Math.PI);
+        this.orbit.pitch = THREE.MathUtils.clamp(this.orbit.pitch + dPitch, -1.2, 0.6);
+        this.onOrbitChange?.();
+    }
+
+    zoomBy(f) {
+        if (this.view === "menu") return;
+        this.orbit.zoom = THREE.MathUtils.clamp(this.orbit.zoom * f, 0.4, 1.7);
+        this.onOrbitChange?.();
+    }
+
+    resetOrbit() {
+        this.orbit = { yaw: 0, pitch: 0, zoom: 1 };
+        this.onOrbitChange?.();
+    }
+
+    // ----- follow cam -----
+    // Keeps the camera beside a moving subject (shell, torpedo, plane), on the viewer's side.
+    track(target, from, to, { dist = 5.5, height = 2.4, back = 3 } = {}) {
+        if (!this.cinematic || this.reducedMotion) return null;
+        const dir = new THREE.Vector3(to.x - from.x, 0, to.z - from.z);
+        if (dir.lengthSq() < 1e-4) dir.set(1, 0, 0);
+        dir.normalize();
+        const n = new THREE.Vector3().crossVectors(dir, new THREE.Vector3(0, 1, 0)).normalize();
+        if (n.z < 0) n.negate();
+        this.shotCam = { target: target.clone(), dir, n, dist, height, back, until: null };
+        return this.shotCam;
+    }
+
+    holdTrack(seconds) {
+        if (this.shotCam) this.shotCam.until = performance.now() + seconds * 1000;
+    }
+
+    endTrack() { this.shotCam = null; }
 
     _effectiveView() {
         const v = this.requestedView || "menu";
@@ -633,9 +683,18 @@ export class Stage {
         const projH = H * Math.sin(elev) + 1.2;
         const dV = (projH / 2) / (Math.tan(fov / 2) * usable);
         const dH = (W / 2) / (Math.tan(fov / 2) * this.camera.aspect);
-        const d = Math.max(dV, dH) * 1.04;
+        let d = Math.max(dV, dH) * 1.04;
+        let e = elev;
+        let yaw = 0;
+        if (this.lowView && this.cinematic && !this.reducedMotion) {
+            e = THREE.MathUtils.degToRad(30);
+            yaw = 0.38;
+            d *= 0.86;
+        }
         this.camTarget.copy(target);
-        this.camPos.set(target.x, target.y + Math.sin(elev) * d, target.z + Math.cos(elev) * d);
+        const sph = new THREE.Spherical(d * this.orbit.zoom, Math.PI / 2 - e, yaw + this.orbit.yaw);
+        sph.phi = THREE.MathUtils.clamp(sph.phi - this.orbit.pitch, 0.12, 1.42);
+        this.camPos.setFromSpherical(sph).add(target);
         if (snap) {
             this.camera.position.copy(this.camPos);
             this.curTarget.copy(this.camTarget);
@@ -683,7 +742,7 @@ export class Stage {
         return new THREE.Vector3(BOARD_X[toKey] + side * rand(9, 12), rand(1.5, 3), rand(-4, 4));
     }
 
-    async _flight(from, to, dur, color) {
+    async _flight(from, to, dur, color, onStep) {
         const shell = new THREE.Mesh(new THREE.SphereGeometry(0.075, 8, 6), new THREE.MeshBasicMaterial({ color: color ?? 0xffd27a, toneMapped: false }));
         shell.material.color.multiplyScalar(4);
         this.scene.add(shell);
@@ -698,6 +757,7 @@ export class Stage {
             p.copy(a).add(b).add(c);
             shell.position.copy(p);
             this.fx.trail(p);
+            onStep?.(p);
         }, ease.linear);
         this.scene.remove(shell);
         shell.geometry.dispose();
@@ -721,6 +781,8 @@ export class Stage {
     async shoot({ fromKey, toKey, cells, kind = "shot" }) {
         if (!cells.length) return;
         const fast = this.reducedMotion;
+        // follow the decisive shell (a sinking one if any)
+        const followIdx = Math.max(0, cells.findIndex((c) => c.r === "sunk"));
         const jobs = cells.map((c, i) => (async () => {
             const delay = fast ? 0 : i * (kind === "salvo" ? 0.2 : kind === "barrage" ? 0.11 : 0);
             if (delay) await this.tweens.run(delay, () => {});
@@ -729,12 +791,15 @@ export class Stage {
             if (!fast) {
                 this.fx.muzzle(from);
                 this.onImpact?.("fire", fromKey);
-                await this._flight(from, to, 0.55 + from.distanceTo(to) * 0.03);
+                const cam = i === followIdx ? this.track(from, from, to) : null;
+                const dur = (0.55 + from.distanceTo(to) * 0.03) * (cam ? 1.35 : 1);
+                await this._flight(from, to, dur, undefined, cam ? (p) => cam.target.lerp(p, 0.35) : null);
+                if (cam) { cam.target.copy(to); this.holdTrack(0.9); }
             }
             this.impact(toKey, c.x, c.y, c.r);
         })());
         await Promise.all(jobs);
-        await this.tweens.run(fast ? 0.05 : 0.35, () => {});
+        await this.tweens.run(fast ? 0.05 : this.shotCam ? 0.85 : 0.35, () => {});
     }
 
     async torpedo({ toKey, axis, path, end }) {
@@ -751,13 +816,16 @@ export class Stage {
         this.onImpact?.("torpedo", toKey);
         if (!fast) {
             const total = pts.length - 1;
-            await this.tweens.run(0.16 * total + 0.2, (t) => {
+            const cam = this.track(pts[0], pts[0], pts[total], { dist: 4.2, height: 1.4, back: 2.6 });
+            await this.tweens.run((0.16 * total + 0.2) * (cam ? 1.3 : 1), (t) => {
                 const f = t * total;
                 const i = Math.min(Math.floor(f), total - 1);
                 const p = pts[i].clone().lerp(pts[i + 1], f - i);
                 body.position.copy(p);
                 this.fx.wake(p, 1.5);
+                if (cam) cam.target.lerp(p, 0.3);
             }, ease.linear);
+            this.holdTrack(0.8);
         }
         this.scene.remove(body);
         body.geometry.dispose();
@@ -769,6 +837,7 @@ export class Stage {
     async sonar({ key, x, y, radius = 1 }) {
         const c = this.cellWorld(key, x, y, 0.15);
         this.onImpact?.("sonar", key);
+        if (this.track(c, c.clone().add(new THREE.Vector3(-1, 0, 0)), c, { dist: 5, height: 3.6, back: 0 })) this.holdTrack(2.2);
         const pulses = this.reducedMotion ? 1 : 3;
         for (let k = 0; k < pulses; k++) {
             this.fx.ripple(c, 0x7fe3ff, (radius + 0.6) * 2.6, 1.1);
@@ -799,14 +868,17 @@ export class Stage {
         const a = axis === "row" ? this.cellWorld(key, -3, index, 2.3) : this.cellWorld(key, index, -3, 2.3);
         const b = axis === "row" ? this.cellWorld(key, 12, index, 2.3) : this.cellWorld(key, index, 12, 2.3);
         this.onImpact?.("plane", key);
+        const cam = this.track(a, a, b, { dist: 5.5, height: 0.6, back: 3.5 });
         const line = [];
         for (let t = 0; t < GRID; t++) line.push(axis === "row" ? { x: t, y: index, color: 0xffd36a } : { x: index, y: t, color: 0xffd36a });
         this.setHighlights(key, "preview", line);
-        await this.tweens.run(fast ? 0.1 : 1.7, (t) => {
+        await this.tweens.run(fast ? 0.1 : cam ? 2.3 : 1.7, (t) => {
             plane.position.copy(a).lerp(b, t);
             plane.position.y += Math.sin(t * Math.PI) * 0.3;
             plane.rotation.x = Math.sin(t * 9) * 0.05;
+            if (cam) cam.target.lerp(plane.position, 0.3);
         }, ease.inOutCubic);
+        this.holdTrack(0.4);
         this.scene.remove(plane);
         plane.traverse((o) => { if (o.geometry) o.geometry.dispose(); });
         m.dispose();
@@ -819,6 +891,7 @@ export class Stage {
         this.fx.sparkle(p, undefined, 40);
         this.fx.ripple(p, 0x7dffb2, 1.6, 0.8);
         this.onImpact?.("repair", key);
+        if (this.track(p, p.clone().add(new THREE.Vector3(-1, 0, 0)), p, { dist: 3.6, height: 2, back: 1 })) this.holdTrack(1.2);
         await this.tweens.run(this.reducedMotion ? 0.1 : 0.9, () => {});
     }
 
@@ -832,11 +905,15 @@ export class Stage {
         const start = s.center.clone();
         s.moving = true;
         this.onImpact?.("move", key);
+        const wc = new THREE.Vector3(BOARD_X[key] + start.x, 0.2, start.z);
+        const cam = this.track(wc, wc, new THREE.Vector3(BOARD_X[key] + target.x, 0.2, target.z), { dist: 4.5, height: 2, back: 1.5 });
         await this.tweens.run(this.reducedMotion ? 0.05 : 0.8, (t) => {
             s.center.copy(start).lerp(target, t);
             const w = new THREE.Vector3(BOARD_X[key] + s.center.x, 0, s.center.z);
             if (Math.random() < 0.6) this.fx.wake(w, 1);
+            if (cam) cam.target.lerp(w, 0.3);
         }, ease.inOutCubic);
+        this.holdTrack(0.6);
         s.moving = false;
         this._placeShipGroup(s, to, horizontal ?? s.horizontal);
     }
@@ -912,13 +989,22 @@ export class Stage {
         }
         let goalPos = this.camPos;
         let goalTarget = this.camTarget;
+        let lerpRate = 3.2;
+        const sc = this.shotCam;
+        if (sc && sc.until && performance.now() > sc.until) this.shotCam = null;
+        else if (sc && this.view !== "menu") {
+            goalTarget = sc.target;
+            goalPos = sc.target.clone().addScaledVector(sc.n, sc.dist).addScaledVector(sc.dir, -sc.back);
+            goalPos.y = Math.max(sc.target.y, 0) + sc.height;
+            lerpRate = 4.2;
+        }
         if (this.killcamT > 0) {
             this.killcamT -= rawDt;
             const kt = this.killTarget;
             goalTarget = kt.clone();
             goalPos = kt.clone().add(new THREE.Vector3(0, 4.2, 6.2));
         }
-        const lerpK = 1 - Math.exp(-rawDt * (this.killcamT > 0 ? 3 : 3.2));
+        const lerpK = 1 - Math.exp(-rawDt * (this.killcamT > 0 ? 3 : lerpRate));
         this.camera.position.lerp(goalPos, lerpK);
         this.curTarget.lerp(goalTarget, lerpK);
         const shake = this.shakeAmp;
