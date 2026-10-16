@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#041426">
+    <title>Batman — Battleship v2</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link rel="stylesheet" href="css/v2.css">
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-JE8BG98RRH"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-JE8BG98RRH');
+    </script>
+    <script>
+      // Remember that this player prefers v2 (the classic page reads the same key).
+      try { localStorage.setItem("battleship-version", "v2"); } catch (e) {}
+    </script>
+    <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+      }
+    }
+    </script>
+    <script type="module" src="js/main.js"></script>
+</head>
+<body data-theme="atlantic">
+    <canvas id="stage" aria-hidden="true"></canvas>
+    <div class="vignette" aria-hidden="true"></div>
+
+    <div id="boot" class="boot" role="status">
+        <div class="boot-inner">
+            <p class="eyebrow"><i class="fa-solid fa-crosshairs"></i> Naval Command</p>
+            <h1 class="logo">BATMAN</h1>
+            <p class="logo-sub">Battleship <span class="v2-badge">V2</span></p>
+            <div class="boot-bar"><span></span></div>
+            <p class="boot-msg" id="boot-msg">Charting the seas…</p>
+        </div>
+    </div>
+
+    <section id="nogl" class="screen hidden" aria-labelledby="nogl-title">
+        <div class="panel narrow">
+            <h2 id="nogl-title"><i class="fa-solid fa-triangle-exclamation"></i> 3D not available</h2>
+            <p>Battleship v2 needs WebGL, and this browser or device has it turned off. The classic version runs everywhere.</p>
+            <a class="btn primary" href="../index.html?v=1"><i class="fa-solid fa-clock-rotate-left"></i> Play Classic v1</a>
+        </div>
+    </section>
+
+    <!-- ===== Main menu ===== -->
+    <section id="menu" class="screen hidden" aria-labelledby="menu-title">
+        <div class="menu-wrap">
+            <div class="menu-brand">
+                <p class="eyebrow"><i class="fa-solid fa-crosshairs"></i> Naval Command</p>
+                <h1 class="logo" id="menu-title">BATMAN</h1>
+                <p class="logo-sub">Battleship <span class="v2-badge">V2</span></p>
+            </div>
+            <div class="mode-grid">
+                <button class="mode-btn featured" data-go="quick" type="button">
+                    <i class="fa-solid fa-anchor"></i><b>Quick Battle</b><span>Your rules vs the AI</span>
+                </button>
+                <button class="mode-btn" data-go="campaign" type="button">
+                    <i class="fa-solid fa-route"></i><b>Campaign</b><span id="campaign-progress">8 admirals · 24 stars</span>
+                </button>
+                <button class="mode-btn" data-go="gauntlet" type="button">
+                    <i class="fa-solid fa-skull"></i><b>Gauntlet</b><span>Roguelite run · draft upgrades</span>
+                </button>
+                <button class="mode-btn" data-go="daily" type="button">
+                    <i class="fa-solid fa-calendar-day"></i><b>Daily Challenge</b><span id="daily-sub">Same seas for everyone today</span>
+                </button>
+                <button class="mode-btn" data-go="online" type="button">
+                    <i class="fa-solid fa-globe"></i><b>Online Duel</b><span>Play a friend with a room code</span>
+                </button>
+                <button class="mode-btn" data-go="hotseat" type="button">
+                    <i class="fa-solid fa-users"></i><b>Pass &amp; Play</b><span>Two captains, one device</span>
+                </button>
+            </div>
+            <div class="menu-row">
+                <button class="chip-btn" data-go="records" type="button"><i class="fa-solid fa-medal"></i> Records</button>
+                <button class="chip-btn" data-go="howto" type="button"><i class="fa-solid fa-circle-question"></i> How to play</button>
+                <button class="chip-btn" data-go="settings" type="button"><i class="fa-solid fa-gear"></i> Settings</button>
+                <a class="chip-btn" id="classic-link" href="../index.html?v=1"><i class="fa-solid fa-clock-rotate-left"></i> Classic v1</a>
+            </div>
+            <div class="theme-row" role="group" aria-label="Theme"></div>
+        </div>
+    </section>
+
+    <!-- ===== Quick battle setup ===== -->
+    <section id="quick" class="screen hidden" aria-labelledby="quick-title">
+        <div class="panel">
+            <header class="panel-head">
+                <button class="icon-btn back" data-back type="button" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button>
+                <h2 id="quick-title">Quick Battle</h2>
+            </header>
+            <div class="field">
+                <span class="field-label">Difficulty</span>
+                <div class="seg" id="quick-diff" role="group" aria-label="Difficulty"></div>
+            </div>
+            <div class="field">
+                <span class="field-label">Rules preset</span>
+                <div class="seg" id="quick-preset" role="group" aria-label="Rules preset">
+                    <button type="button" data-preset="classic">Classic</button>
+                    <button type="button" data-preset="tactical">Tactical</button>
+                    <button type="button" data-preset="chaos">All-in</button>
+                </div>
+            </div>
+            <div class="rule-grid" id="quick-rules"></div>
+            <button class="btn primary big" id="quick-start" type="button"><i class="fa-solid fa-play"></i> Deploy Fleet</button>
+        </div>
+    </section>
+
+    <!-- ===== Campaign ===== -->
+    <section id="campaign" class="screen hidden" aria-labelledby="campaign-title">
+        <div class="panel wide">
+            <header class="panel-head">
+                <button class="icon-btn back" data-back type="button" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button>
+                <h2 id="campaign-title">Campaign</h2>
+                <span class="head-meta" id="campaign-stars"></span>
+            </header>
+            <ol class="mission-list" id="mission-list"></ol>
+        </div>
+    </section>
+
+    <!-- ===== Gauntlet ===== -->
+    <section id="gauntlet" class="screen hidden" aria-labelledby="gauntlet-title">
+        <div class="panel">
+            <header class="panel-head">
+                <button class="icon-btn back" data-back type="button" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button>
+                <h2 id="gauntlet-title">The Gauntlet</h2>
+            </header>
+            <div id="gauntlet-body"></div>
+        </div>
+    </section>
+
+    <!-- ===== Online ===== -->
+    <section id="online" class="screen hidden" aria-labelledby="online-title">
+        <div class="panel">
+            <header class="panel-head">
+                <button class="icon-btn back" data-back type="button" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button>
+                <h2 id="online-title">Online Duel</h2>
+            </header>
+            <p class="muted">Peer-to-peer over WebRTC. Share the room code or link with a friend; the host picks the rules.</p>
+            <div class="field">
+                <label class="field-label" for="callsign">Your callsign</label>
+                <input id="callsign" class="text-input" maxlength="16" autocomplete="off" placeholder="Captain">
+            </div>
+            <div class="field">
+                <span class="field-label">Rules (host)</span>
+                <div class="seg" id="online-preset" role="group" aria-label="Online rules">
+                    <button type="button" data-preset="classic">Classic</button>
+                    <button type="button" data-preset="tactical" class="active">Tactical</button>
+                    <button type="button" data-preset="chaos">All-in</button>
+                </div>
+            </div>
+            <div class="online-actions">
+                <button class="btn primary" id="online-host" type="button"><i class="fa-solid fa-tower-broadcast"></i> Host a room</button>
+                <div class="join-row">
+                    <input id="join-code" class="text-input code" maxlength="5" autocomplete="off" placeholder="CODE" aria-label="Room code">
+                    <button class="btn" id="online-join" type="button"><i class="fa-solid fa-right-to-bracket"></i> Join</button>
+                </div>
+            </div>
+            <div class="online-status hidden" id="online-status"></div>
+        </div>
+    </section>
+
+    <!-- ===== Records ===== -->
+    <section id="records" class="screen hidden" aria-labelledby="records-title">
+        <div class="panel wide">
+            <header class="panel-head">
+                <button class="icon-btn back" data-back type="button" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button>
+                <h2 id="records-title">Records</h2>
+            </header>
+            <div class="stat-grid" id="stat-grid"></div>
+            <h3 class="sub-head">Achievements <span id="ach-count"></span></h3>
+            <ul class="ach-grid" id="ach-grid"></ul>
+        </div>
+    </section>
+
+    <!-- ===== Settings ===== -->
+    <section id="settings" class="screen hidden" aria-labelledby="settings-title">
+        <div class="panel">
+            <header class="panel-head">
+                <button class="icon-btn back" data-back type="button" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button>
+                <h2 id="settings-title">Settings</h2>
+            </header>
+            <div id="settings-body" class="settings-body"></div>
+        </div>
+    </section>
+
+    <!-- ===== How to play ===== -->
+    <section id="howto" class="screen hidden" aria-labelledby="howto-title">
+        <div class="panel wide">
+            <header class="panel-head">
+                <button class="icon-btn back" data-back type="button" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button>
+                <h2 id="howto-title">How to play</h2>
+            </header>
+            <div class="howto" id="howto-body"></div>
+        </div>
+    </section>
+
+    <!-- ===== In-game HUD ===== -->
+    <div id="hud" class="hud hidden">
+        <header class="hud-top" id="hud-top">
+            <button class="icon-btn" id="hud-home" type="button" aria-label="Menu" title="Menu (Esc)"><i class="fa-solid fa-house"></i></button>
+            <div class="hud-title">
+                <span class="hud-mode" id="hud-mode">Quick Battle</span>
+                <span class="hud-sub" id="hud-sub"></span>
+            </div>
+            <div class="turn-banner" id="turn-banner" role="status" aria-live="polite">Place your fleet</div>
+            <div class="hud-tools">
+                <button class="icon-btn" id="hud-view" type="button" aria-label="Camera view" title="Camera view (V)"><i class="fa-solid fa-video"></i></button>
+                <button class="icon-btn" id="hud-log" type="button" aria-label="Battle log" title="Battle log (L)"><i class="fa-solid fa-list"></i></button>
+                <button class="icon-btn" id="hud-sound" type="button" aria-label="Sound" title="Sound"><i class="fa-solid fa-volume-high"></i></button>
+                <button class="icon-btn" id="hud-settings" type="button" aria-label="Settings"><i class="fa-solid fa-gear"></i></button>
+            </div>
+        </header>
+
+        <aside class="fleet-card home" id="fleet-home" aria-label="Your fleet"></aside>
+        <aside class="fleet-card enemy" id="fleet-enemy" aria-label="Enemy fleet"></aside>
+
+        <div class="admiral hidden" id="admiral" role="status" aria-live="polite">
+            <div class="admiral-portrait" id="admiral-portrait"><i class="fa-solid fa-robot"></i></div>
+            <div class="admiral-text">
+                <b id="admiral-name">Enemy</b>
+                <span id="admiral-line"></span>
+            </div>
+        </div>
+
+        <aside class="log-panel hidden" id="log-panel" aria-label="Battle log">
+            <h3><i class="fa-solid fa-list"></i> Battle Log</h3>
+            <ul id="log-list"></ul>
+        </aside>
+
+        <footer class="hud-bottom" id="hud-bottom">
+            <div class="hint" id="hint"></div>
+            <div class="bar" id="placement-bar">
+                <div class="dock" id="dock"></div>
+                <div class="bar-actions">
+                    <button class="tool-btn" id="pl-rotate" type="button" title="Rotate (R)"><i class="fa-solid fa-rotate"></i><span>Rotate</span></button>
+                    <button class="tool-btn" id="pl-auto" type="button" title="Auto deploy"><i class="fa-solid fa-shuffle"></i><span>Auto</span></button>
+                    <button class="tool-btn" id="pl-undo" type="button" title="Undo"><i class="fa-solid fa-rotate-left"></i><span>Undo</span></button>
+                    <button class="tool-btn" id="pl-clear" type="button" title="Clear"><i class="fa-solid fa-trash"></i><span>Clear</span></button>
+                    <button class="btn primary" id="pl-ready" type="button" disabled><i class="fa-solid fa-flag-checkered"></i> Ready</button>
+                </div>
+            </div>
+            <div class="bar hidden" id="action-bar">
+                <button class="fire-btn" id="act-fire" type="button" title="Fire (F)"><i class="fa-solid fa-crosshairs"></i><span id="fire-label">Fire</span></button>
+                <div class="abilities" id="abilities"></div>
+                <button class="tool-btn" id="act-move" type="button" title="Maneuver (M)"><i class="fa-solid fa-arrows-up-down-left-right"></i><span>Maneuver</span><em class="cd" id="move-cd"></em></button>
+                <button class="tool-btn" id="act-coach" type="button" title="Coach heat map (C)" aria-pressed="false"><i class="fa-solid fa-brain"></i><span>Coach</span></button>
+                <div class="emotes hidden" id="emotes"></div>
+            </div>
+            <div class="bar hidden" id="replay-bar">
+                <span class="replay-tag"><i class="fa-solid fa-film"></i> Replay</span>
+                <button class="tool-btn" id="replay-speed" type="button"><i class="fa-solid fa-forward"></i><span>2×</span></button>
+                <button class="btn" id="replay-exit" type="button"><i class="fa-solid fa-xmark"></i> End replay</button>
+            </div>
+        </footer>
+    </div>
+
+    <div class="toast-stack" id="toast-stack" aria-live="polite"></div>
+    <div class="modal hidden" id="modal" role="dialog" aria-modal="true">
+        <div class="modal-card" id="modal-card"></div>
+    </div>
+    <div class="curtain hidden" id="curtain" role="dialog" aria-modal="true">
+        <div class="curtain-card" id="curtain-card"></div>
+    </div>
+</body>
+</html>
