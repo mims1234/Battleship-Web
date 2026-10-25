@@ -2,6 +2,7 @@
 import { Emitter } from "./util.js";
 
 const PEERJS_URL = "https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js";
+const PEERJS_SRI = "sha384-nlUQ8ZqCbvStErob+biJNzSgltf6urV3VGqhfIfzhmg9RXmpeRm76ELw0pYnKlTR";
 const PREFIX = "batman-bsv2-";
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
@@ -12,6 +13,8 @@ function loadPeerJS() {
     loading = new Promise((resolve, reject) => {
         const s = document.createElement("script");
         s.src = PEERJS_URL;
+        s.integrity = PEERJS_SRI;
+        s.crossOrigin = "anonymous";
         s.async = true;
         s.onload = () => resolve();
         s.onerror = () => { loading = null; reject(new Error("Could not load the networking library.")); };
